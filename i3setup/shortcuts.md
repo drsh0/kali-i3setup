@@ -35,5 +35,7 @@ xfce4-popup-whiskermenu
 ### xfce
 
 `ctrl+alt+l` = lock
+
 `ctrl+alt+x` = xkill
+
 `alt+f1` = whisker-menu
