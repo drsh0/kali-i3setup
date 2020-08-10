@@ -3,6 +3,7 @@ xfce4-screenshooter
 xfce4-popup-whiskermenu
 
 ### i3
+
 `$mod+b` = toggle border
 
 `$mod+shift+tab` = focus right
@@ -31,3 +32,8 @@ xfce4-popup-whiskermenu
 
 `$mod+shift+q` = quit
 
+### xfce
+
+`ctrl+alt+l` = lock
+`ctrl+alt+x` = xkill
+`alt+f1` = whisker-menu
