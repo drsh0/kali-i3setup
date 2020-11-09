@@ -18,10 +18,11 @@
  *
  */
 
+#include "i3ipc-reply-types.h"
+
 #include <glib-object.h>
 
 #include "i3ipc-con.h"
-#include "i3ipc-reply-types.h"
 
 /**
  * i3ipc_command_reply_copy:
@@ -51,8 +52,9 @@ i3ipcCommandReply *i3ipc_command_reply_copy(i3ipcCommandReply *reply) {
  * Frees @reply. If @reply is %NULL, it simply returns.
  */
 void i3ipc_command_reply_free(i3ipcCommandReply *reply) {
-    if (!reply)
+    if (!reply) {
         return;
+    }
 
     g_free(reply->error);
 
@@ -90,8 +92,9 @@ i3ipcVersionReply *i3ipc_version_reply_copy(i3ipcVersionReply *version) {
  * Frees @version. If @version is %NULL, it simply returns.
  */
 void i3ipc_version_reply_free(i3ipcVersionReply *version) {
-    if (!version)
+    if (!version) {
         return;
+    }
 
     g_free(version->human_readable);
     g_slice_free(i3ipcVersionReply, version);
@@ -143,8 +146,9 @@ i3ipcBarConfigReply *i3ipc_bar_config_reply_copy(i3ipcBarConfigReply *config) {
  * Frees @config. If @config is %NULL, it simply returns.
  */
 void i3ipc_bar_config_reply_free(i3ipcBarConfigReply *config) {
-    if (!config)
+    if (!config) {
         return;
+    }
 
     g_free(config->id);
     g_free(config->mode);
@@ -189,8 +193,9 @@ i3ipcOutputReply *i3ipc_output_reply_copy(i3ipcOutputReply *output) {
  * Frees @output. If @output is %NULL, it simply returns.
  */
 void i3ipc_output_reply_free(i3ipcOutputReply *output) {
-    if (!output)
+    if (!output) {
         return;
+    }
 
     g_free(output->name);
     g_free(output->current_workspace);
@@ -233,8 +238,9 @@ i3ipcWorkspaceReply *i3ipc_workspace_reply_copy(i3ipcWorkspaceReply *workspace) 
  * Frees @workspace. If @workspace is %NULL, it simply returns.
  */
 void i3ipc_workspace_reply_free(i3ipcWorkspaceReply *workspace) {
-    if (!workspace)
+    if (!workspace) {
         return;
+    }
 
     g_free(workspace->name);
     g_free(workspace->output);

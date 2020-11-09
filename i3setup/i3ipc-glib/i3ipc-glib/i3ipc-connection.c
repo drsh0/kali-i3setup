@@ -17,19 +17,18 @@
  * Copyright © 2014, Tony Crisci
  */
 
+#include "i3ipc-connection.h"
+
 #include <fcntl.h>
+#include <gio/gio.h>
+#include <glib-object.h>
+#include <json-glib/json-glib.h>
 #include <sys/errno.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <xcb/xcb.h>
 
-#include <glib-object.h>
-#include <json-glib/json-glib.h>
-
-#include <gio/gio.h>
-
 #include "i3ipc-con-private.h"
-#include "i3ipc-connection.h"
 #include "i3ipc-enum-types.h"
 #include "i3ipc-event-types.h"
 #include "i3ipc-reply-types.h"
@@ -72,8 +71,9 @@ struct _i3ipcConnectionPrivate {
 static void i3ipc_connection_initable_iface_init(GInitableIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE(i3ipcConnection, i3ipc_connection, G_TYPE_OBJECT,
-                        G_IMPLEMENT_INTERFACE(G_TYPE_INITABLE,
-                                              i3ipc_connection_initable_iface_init));
+                        G_ADD_PRIVATE(i3ipcConnection)
+                            G_IMPLEMENT_INTERFACE(G_TYPE_INITABLE,
+                                                  i3ipc_connection_initable_iface_init));
 
 static void i3ipc_connection_set_property(GObject *object, guint property_id, const GValue *value,
                                           GParamSpec *pspec) {
@@ -303,12 +303,10 @@ static void i3ipc_connection_class_init(i3ipcConnectionClass *klass) {
                      g_cclosure_marshal_VOID__VOID, /* c_marshaller */
                      G_TYPE_NONE,                   /* return_type */
                      0);                            /* n_params */
-
-    g_type_class_add_private(klass, sizeof(i3ipcConnectionPrivate));
 }
 
 static void i3ipc_connection_init(i3ipcConnection *self) {
-    self->priv = G_TYPE_INSTANCE_GET_PRIVATE(self, I3IPC_TYPE_CONNECTION, i3ipcConnectionPrivate);
+    self->priv = i3ipc_connection_get_instance_private(self);
 }
 
 /**
@@ -349,8 +347,9 @@ static gchar *i3ipc_connection_get_socket_path(i3ipcConnection *self, GError **e
 
     g_return_val_if_fail(err == NULL || *err == NULL, NULL);
 
-    if (self->priv->socket_path != NULL)
+    if (self->priv->socket_path != NULL) {
         return self->priv->socket_path;
+    }
 
     xcb_connection_t *conn = xcb_connect(NULL, NULL);
 
@@ -464,8 +463,9 @@ static GIOStatus ipc_recv_message(GIOChannel *channel, uint32_t *message_type,
             return status;
         }
 
-        if (status == G_IO_STATUS_EOF)
+        if (status == G_IO_STATUS_EOF) {
             return status;
+        }
     }
 
     if (memcmp(walk, I3IPC_MAGIC, strlen(I3IPC_MAGIC)) != 0) {
@@ -478,8 +478,9 @@ static GIOStatus ipc_recv_message(GIOChannel *channel, uint32_t *message_type,
     walk += strlen(I3IPC_MAGIC);
     memcpy(reply_length, walk, sizeof(uint32_t));
     walk += sizeof(uint32_t);
-    if (message_type != NULL)
+    if (message_type != NULL) {
         memcpy(message_type, walk, sizeof(uint32_t));
+    }
 
     *reply = malloc(*reply_length + 1);
 
@@ -493,8 +494,9 @@ static GIOStatus ipc_recv_message(GIOChannel *channel, uint32_t *message_type,
             return status;
         }
 
-        if (status == G_IO_STATUS_EOF)
+        if (status == G_IO_STATUS_EOF) {
             return status;
+        }
     }
 
     return status;
@@ -505,8 +507,9 @@ static GIOStatus ipc_recv_message(GIOChannel *channel, uint32_t *message_type,
  * Emits the corresponding signal with the reply.
  */
 static gboolean ipc_on_data(GIOChannel *channel, GIOCondition condition, i3ipcConnection *conn) {
-    if (condition != G_IO_IN)
+    if (condition != G_IO_IN) {
         return TRUE;
+    }
 
     GIOStatus status;
     uint32_t reply_length;
@@ -521,8 +524,9 @@ static gboolean ipc_on_data(GIOChannel *channel, GIOCondition condition, i3ipcCo
     if (status == G_IO_STATUS_EOF) {
         g_signal_emit(conn, connection_signals[IPC_SHUTDOWN], 0);
 
-        if (conn->priv->main_loop != NULL)
+        if (conn->priv->main_loop != NULL) {
             i3ipc_connection_main_quit(conn);
+        }
 
         return FALSE;
     }
@@ -556,13 +560,15 @@ static gboolean ipc_on_data(GIOChannel *channel, GIOCondition condition, i3ipcCo
         e->change = g_strdup(json_object_get_string_member(json_reply, "change"));
 
         if (json_object_has_member(json_reply, "current") &&
-            !json_object_get_null_member(json_reply, "current"))
+            !json_object_get_null_member(json_reply, "current")) {
             e->current =
                 i3ipc_con_new(NULL, json_object_get_object_member(json_reply, "current"), conn);
+        }
 
         if (json_object_has_member(json_reply, "old") &&
-            !json_object_get_null_member(json_reply, "old"))
+            !json_object_get_null_member(json_reply, "old")) {
             e->old = i3ipc_con_new(NULL, json_object_get_object_member(json_reply, "old"), conn);
+        }
 
         g_signal_emit(conn, connection_signals[WORKSPACE], g_quark_from_string(e->change), e);
         break;
@@ -769,8 +775,9 @@ gchar *i3ipc_connection_message(i3ipcConnection *self, i3ipcMessageType message_
 
     g_return_val_if_fail(!self->priv->connected || err == NULL || *err == NULL, NULL);
 
-    if (payload == NULL)
+    if (payload == NULL) {
         payload = "";
+    }
 
     GIOChannel *channel = (message_type == I3IPC_MESSAGE_TYPE_SUBSCRIBE ? self->priv->sub_channel
                                                                         : self->priv->cmd_channel);
@@ -789,8 +796,9 @@ gchar *i3ipc_connection_message(i3ipcConnection *self, i3ipcMessageType message_
         return NULL;
     }
 
-    if (status == G_IO_STATUS_NORMAL)
+    if (status == G_IO_STATUS_NORMAL) {
         reply[reply_length] = '\0';
+    }
 
     return reply;
 }
@@ -849,9 +857,9 @@ GSList *i3ipc_connection_command(i3ipcConnection *self, const gchar *command, GE
                                 ? g_strdup(json_object_get_string_member(json_reply, "error"))
                                 : NULL);
 
-        cmd_reply->_id = (json_object_has_member(json_reply, "id")
-                                ? g_strdup(json_object_get_string_member(json_reply, "id"))
-                                : 0);
+        cmd_reply->_id =
+            (json_object_has_member(json_reply, "id") ? json_object_get_int_member(json_reply, "id")
+                                                      : 0);
 
         retval = g_slist_append(retval, cmd_reply);
     }
@@ -893,23 +901,29 @@ i3ipcCommandReply *i3ipc_connection_subscribe(i3ipcConnection *self, i3ipcEvent 
     builder = json_builder_new();
     json_builder_begin_array(builder);
 
-    if (events & (I3IPC_EVENT_WINDOW & ~self->priv->subscriptions))
+    if (events & (I3IPC_EVENT_WINDOW & ~self->priv->subscriptions)) {
         json_builder_add_string_value(builder, "window");
+    }
 
-    if (events & (I3IPC_EVENT_BARCONFIG_UPDATE & ~self->priv->subscriptions))
+    if (events & (I3IPC_EVENT_BARCONFIG_UPDATE & ~self->priv->subscriptions)) {
         json_builder_add_string_value(builder, "barconfig_update");
+    }
 
-    if (events & (I3IPC_EVENT_MODE & ~self->priv->subscriptions))
+    if (events & (I3IPC_EVENT_MODE & ~self->priv->subscriptions)) {
         json_builder_add_string_value(builder, "mode");
+    }
 
-    if (events & (I3IPC_EVENT_OUTPUT & ~self->priv->subscriptions))
+    if (events & (I3IPC_EVENT_OUTPUT & ~self->priv->subscriptions)) {
         json_builder_add_string_value(builder, "output");
+    }
 
-    if (events & (I3IPC_EVENT_WORKSPACE & ~self->priv->subscriptions))
+    if (events & (I3IPC_EVENT_WORKSPACE & ~self->priv->subscriptions)) {
         json_builder_add_string_value(builder, "workspace");
+    }
 
-    if (events & (I3IPC_EVENT_BINDING & ~self->priv->subscriptions))
+    if (events & (I3IPC_EVENT_BINDING & ~self->priv->subscriptions)) {
         json_builder_add_string_value(builder, "binding");
+    }
 
     json_builder_end_array(builder);
 
@@ -954,8 +968,9 @@ i3ipcCommandReply *i3ipc_connection_subscribe(i3ipcConnection *self, i3ipcEvent 
     g_object_unref(generator);
     g_object_unref(parser);
 
-    if (retval->success)
+    if (retval->success) {
         self->priv->subscriptions |= events;
+    }
 
     return retval;
 }
@@ -985,18 +1000,19 @@ i3ipcConnection *i3ipc_connection_on(i3ipcConnection *self, const gchar *event, 
 
     event_details = g_strsplit(event, "::", 0);
 
-    if (strcmp(event_details[0], "workspace") == 0)
+    if (strcmp(event_details[0], "workspace") == 0) {
         flags = I3IPC_EVENT_WORKSPACE;
-    else if (strcmp(event_details[0], "output") == 0)
+    } else if (strcmp(event_details[0], "output") == 0) {
         flags = I3IPC_EVENT_OUTPUT;
-    else if (strcmp(event_details[0], "window") == 0)
+    } else if (strcmp(event_details[0], "window") == 0) {
         flags = I3IPC_EVENT_WINDOW;
-    else if (strcmp(event_details[0], "mode") == 0)
+    } else if (strcmp(event_details[0], "mode") == 0) {
         flags = I3IPC_EVENT_MODE;
-    else if (strcmp(event_details[0], "barconfig_update") == 0)
+    } else if (strcmp(event_details[0], "barconfig_update") == 0) {
         flags = I3IPC_EVENT_BARCONFIG_UPDATE;
-    else if (strcmp(event_details[0], "binding") == 0)
+    } else if (strcmp(event_details[0], "binding") == 0) {
         flags = I3IPC_EVENT_BINDING;
+    }
 
     if (flags) {
         cmd_reply = i3ipc_connection_subscribe(self, flags, &tmp_error);
@@ -1525,7 +1541,7 @@ i3ipcVersionReply *i3ipc_connection_get_version(i3ipcConnection *self, GError **
  * @self: An #i3ipcConnection
  * @err: (allow-none): return location for a GError, or NULL
  *
- * Gets the config of i3. 
+ * Gets the config of i3.
  *
  * Returns: (transfer full): an *gchar
  */

@@ -50,8 +50,9 @@ i3ipcRect *i3ipc_rect_copy(i3ipcRect *rect) {
  * Frees @rect. If @rect is %NULL, it simply returns.
  */
 void i3ipc_rect_free(i3ipcRect *rect) {
-    if (!rect)
+    if (!rect) {
         return;
+    }
 
     g_slice_free(i3ipcRect, rect);
 }
@@ -84,7 +85,7 @@ struct _i3ipcConPrivate {
     i3ipcCon *parent;
 };
 
-G_DEFINE_TYPE(i3ipcCon, i3ipc_con, G_TYPE_OBJECT);
+G_DEFINE_TYPE_WITH_PRIVATE(i3ipcCon, i3ipc_con, G_TYPE_OBJECT);
 
 enum {
     PROP_0,
@@ -244,8 +245,9 @@ static void i3ipc_con_dispose(GObject *gobject) {
 }
 
 static void i3ipc_con_list_free_func(gpointer data) {
-    if (data != NULL && I3IPC_IS_CON(data))
+    if (data != NULL && I3IPC_IS_CON(data)) {
         g_clear_object(&data);
+    }
 }
 
 static void i3ipc_con_finalize(GObject *gobject) {
@@ -262,14 +264,17 @@ static void i3ipc_con_finalize(GObject *gobject) {
 
     g_object_unref(self->priv->conn);
 
-    if (self->priv->nodes)
+    if (self->priv->nodes) {
         g_list_free_full(self->priv->nodes, i3ipc_con_list_free_func);
+    }
 
-    if (self->priv->floating_nodes)
+    if (self->priv->floating_nodes) {
         g_list_free_full(self->priv->floating_nodes, i3ipc_con_list_free_func);
+    }
 
-    if (self->priv->focus)
+    if (self->priv->focus) {
         g_list_free(self->priv->focus);
+    }
 
     G_OBJECT_CLASS(i3ipc_con_parent_class)->finalize(gobject);
 }
@@ -416,12 +421,10 @@ static void i3ipc_con_class_init(i3ipcConClass *klass) {
         G_PARAM_READABLE);
 
     g_object_class_install_properties(gobject_class, N_PROPERTIES, obj_properties);
-
-    g_type_class_add_private(klass, sizeof(i3ipcConPrivate));
 }
 
 static void i3ipc_con_init(i3ipcCon *self) {
-    self->priv = G_TYPE_INSTANCE_GET_PRIVATE(self, I3IPC_TYPE_CON, i3ipcConPrivate);
+    self->priv = i3ipc_con_get_instance_private(self);
     self->priv->rect = g_slice_new0(i3ipcRect);
     self->priv->deco_rect = g_slice_new0(i3ipcRect);
     self->priv->nodes = NULL;
@@ -456,21 +459,25 @@ i3ipcCon *i3ipc_con_new(i3ipcCon *parent, JsonObject *data, i3ipcConnection *con
     g_object_ref(conn);
     con->priv->conn = conn;
 
-    if (!json_object_get_null_member(data, "percent"))
+    if (!json_object_get_null_member(data, "percent")) {
         con->priv->percent = json_object_get_double_member(data, "percent");
+    }
 
-    if (!json_object_get_null_member(data, "window"))
+    if (!json_object_get_null_member(data, "window")) {
         con->priv->window = json_object_get_int_member(data, "window");
+    }
 
     if (json_object_has_member(data, "window_properties")) {
         JsonObject *window_properties = json_object_get_object_member(data, "window_properties");
 
-        if (json_object_has_member(window_properties, "class"))
+        if (json_object_has_member(window_properties, "class")) {
             con->priv->window_class =
                 g_strdup(json_object_get_string_member(window_properties, "class"));
-        if (json_object_has_member(window_properties, "window_role"))
+        }
+        if (json_object_has_member(window_properties, "window_role")) {
             con->priv->window_role =
                 g_strdup(json_object_get_string_member(window_properties, "window_role"));
+        }
     }
 
     if (json_object_has_member(data, "mark")) {
@@ -587,8 +594,9 @@ i3ipcCon *i3ipc_con_root(i3ipcCon *self) {
     while (parent != NULL) {
         parent = retval->priv->parent;
 
-        if (parent != NULL)
+        if (parent != NULL) {
             retval = parent;
+        }
     }
 
     return retval;
@@ -616,8 +624,9 @@ GList *i3ipc_con_descendents(i3ipcCon *self) {
     GList *retval;
 
     /* if the con is a leaf, there is nothing to do */
-    if (!self->priv->nodes && !self->priv->floating_nodes)
+    if (!self->priv->nodes && !self->priv->floating_nodes) {
         return NULL;
+    }
 
     /* the list has to have a first element for some reason. */
     retval = g_list_alloc();
@@ -649,8 +658,9 @@ GList *i3ipc_con_leaves(i3ipcCon *self) {
         i3ipcCon *con = I3IPC_CON(g_list_nth_data(descendents, i));
 
         if (g_list_length(con->priv->nodes) == 0 && g_strcmp0(con->priv->type, "con") == 0 &&
-            g_strcmp0(con->priv->parent->priv->type, "dockarea") != 0)
+            g_strcmp0(con->priv->parent->priv->type, "dockarea") != 0) {
             retval = g_list_append(retval, con);
+        }
     }
 
     g_list_free(descendents);
@@ -692,8 +702,9 @@ void i3ipc_con_command(i3ipcCon *self, const gchar *command, GError **err) {
     reply = i3ipc_connection_message(self->priv->conn, I3IPC_MESSAGE_TYPE_COMMAND, context_command,
                                      &tmp_error);
 
-    if (tmp_error != NULL)
+    if (tmp_error != NULL) {
         g_propagate_error(err, tmp_error);
+    }
 
     g_free(reply);
     g_free(context_command);
@@ -717,20 +728,23 @@ void i3ipc_con_command_children(i3ipcCon *self, const gchar *command, GError **e
 
     len = g_list_length(self->priv->nodes);
 
-    if (len == 0)
+    if (len == 0) {
         return;
+    }
 
     payload = g_string_new("");
 
-    for (gint i = 0; i < len; i += 1)
+    for (gint i = 0; i < len; i += 1) {
         g_string_append_printf(payload, "[con_id=\"%lu\"] %s; ",
                                I3IPC_CON(g_list_nth_data(self->priv->nodes, i))->priv->id, command);
+    }
 
     reply = i3ipc_connection_message(self->priv->conn, I3IPC_MESSAGE_TYPE_COMMAND, payload->str,
                                      &tmp_error);
 
-    if (tmp_error != NULL)
+    if (tmp_error != NULL) {
         g_propagate_error(err, tmp_error);
+    }
 
     g_free(reply);
     g_string_free(payload, TRUE);
@@ -740,10 +754,11 @@ static void i3ipc_con_collect_workspaces_func(gpointer data, gpointer user_data)
     i3ipcCon *con = I3IPC_CON(data);
     GList *workspaces = (GList *)user_data;
 
-    if (g_strcmp0(con->priv->type, "workspace") == 0 && !g_str_has_prefix(con->priv->name, "__"))
+    if (g_strcmp0(con->priv->type, "workspace") == 0 && !g_str_has_prefix(con->priv->name, "__")) {
         workspaces = g_list_append(workspaces, con);
-    else if (workspaces != NULL)
+    } else if (workspaces != NULL) {
         g_list_foreach(con->priv->nodes, i3ipc_con_collect_workspaces_func, workspaces);
+    }
 }
 
 /**
@@ -759,8 +774,9 @@ GList *i3ipc_con_workspaces(i3ipcCon *self) {
     root = i3ipc_con_root(self);
 
     /* this could happen for incomplete trees */
-    if (!root->priv->nodes)
+    if (!root->priv->nodes) {
         return NULL;
+    }
 
     /* the list has to have a first element for some reason. */
     retval = g_list_alloc();
@@ -793,13 +809,15 @@ i3ipcCon *i3ipc_con_find_focused(i3ipcCon *self) {
 
     descendents = i3ipc_con_descendents(self);
 
-    if (descendents == NULL)
+    if (descendents == NULL) {
         return NULL;
+    }
 
     cmp_result = g_list_find_custom(descendents, NULL, i3ipc_con_focused_cmp_func);
 
-    if (cmp_result != NULL)
+    if (cmp_result != NULL) {
         retval = I3IPC_CON(cmp_result->data);
+    }
 
     g_list_free(descendents);
 
@@ -892,8 +910,9 @@ GList *i3ipc_con_find_named(i3ipcCon *self, const gchar *pattern, GError **err) 
     for (gint i = 0; i < len; i += 1) {
         i3ipcCon *con = I3IPC_CON(g_list_nth_data(descendents, i));
 
-        if (g_regex_match(regex, con->priv->name, 0, NULL))
+        if (g_regex_match(regex, con->priv->name, 0, NULL)) {
             retval = g_list_append(retval, con);
+        }
     }
 
     g_list_free(descendents);
@@ -932,8 +951,9 @@ GList *i3ipc_con_find_classed(i3ipcCon *self, const gchar *pattern, GError **err
     for (gint i = 0; i < len; i += 1) {
         i3ipcCon *con = I3IPC_CON(g_list_nth_data(descendents, i));
 
-        if (con->priv->window_class && g_regex_match(regex, con->priv->window_class, 0, NULL))
+        if (con->priv->window_class && g_regex_match(regex, con->priv->window_class, 0, NULL)) {
             retval = g_list_append(retval, con);
+        }
     }
 
     g_list_free(descendents);
@@ -972,8 +992,9 @@ GList *i3ipc_con_find_marked(i3ipcCon *self, const gchar *pattern, GError **err)
     for (gint i = 0; i < len; i += 1) {
         i3ipcCon *con = I3IPC_CON(g_list_nth_data(descendents, i));
 
-        if (con->priv->mark && g_regex_match(regex, con->priv->mark, 0, NULL))
+        if (con->priv->mark && g_regex_match(regex, con->priv->mark, 0, NULL)) {
             retval = g_list_append(retval, con);
+        }
     }
 
     g_list_free(descendents);
@@ -992,8 +1013,9 @@ i3ipcCon *i3ipc_con_workspace(i3ipcCon *self) {
     i3ipcCon *retval = self->priv->parent;
 
     while (retval != NULL) {
-        if (g_strcmp0(retval->priv->type, "workspace") == 0)
+        if (g_strcmp0(retval->priv->type, "workspace") == 0) {
             break;
+        }
 
         retval = retval->priv->parent;
     }
