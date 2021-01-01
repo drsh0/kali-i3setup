@@ -1,0 +1,6 @@
+alias gh='history|grep'
+alias vpn='tmux new -s vpn'
+alias vpna='tmux a -t vpn'
+alias htb='sudo openvpn $HTBVPN'
+alias thm='sudo openvpn $THMVPN'
+alias mkdir='mkdir -p'
