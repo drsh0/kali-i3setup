@@ -16,6 +16,7 @@ echo -e "installing visual packages"
 sudo apt install adapta-gtk-theme papirus-icon-theme -y
 sudo apt install xfce4-genmon-plugin xfce4-xkb-plugin xfce4-fsguard-plugin xfce4-goodies -y
 sudo apt install j4-dmenu-desktop
+sudo apt install gtk3-nocsd
 git clone https://github.com/magicmonty/bash-git-prompt.git ~/.bash-git-prompt --depth=1
 
 #security
